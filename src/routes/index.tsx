@@ -28,6 +28,17 @@ const values = [
   { icon: HandCoins, title: 'Protection that fits.', copy: 'Flexible payment options with your priorities in mind.' },
   { icon: CircleCheck, title: 'A relationship, not a transaction.', copy: 'A simple application process and ongoing support after enrollment.' },
 ];
+const slots = ['10:00 AM', '11:30 AM', '1:00 PM', '2:30 PM', '4:00 PM', '5:30 PM'];
+function upcomingDays() {
+  const out: { label: string; weekday: string; date: string }[] = [];
+  const d = new Date();
+  while (out.length < 10) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    out.push({ label: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }), weekday: d.toLocaleDateString('en-US', { weekday: 'short' }), date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) });
+  }
+  return out;
+}
 function Index() {
   const [consultation, setConsultation] = useState(false);
   const [service, setService] = useState<number | null>(null);
@@ -35,11 +46,18 @@ function Index() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const activeService = service === null ? null : services[service];
   const startConsultation = (value = 'Life Insurance') => { setTopic(value); setService(null); setConsultation(true); setMobileMenu(false); };
+  const [day, setDay] = useState('');
+  const [slot, setSlot] = useState('');
+  const [error, setError] = useState('');
+  const days = consultation ? upcomingDays() : [];
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!day || !slot) { setError('Please choose a day and time.'); return; }
+    setError('');
     const data = new FormData(event.currentTarget);
-    const body = `Hello Joycelyn,\n\nI’d like to discuss ${topic}.\n\nName: ${data.get('name')}\nEmail: ${data.get('email')}\n\n${data.get('message') || ''}`;
-    window.location.href = `mailto:jaykorang@yahoo.com?subject=${encodeURIComponent(`Consultation enquiry: ${topic}`)}&body=${encodeURIComponent(body)}`;
+    const clean = (k: string, max: number) => String(data.get(k) || '').trim().slice(0, max);
+    const body = `Hello Joycelyn,\n\nI’d like to request a consultation about ${topic}.\n\nPreferred time: ${day} at ${slot} (Eastern Time)\n\nName: ${clean('name', 100)}\nEmail: ${clean('email', 255)}\nPhone: ${clean('phone', 30)}\n\n${clean('message', 1000)}`;
+    window.location.href = `mailto:jaykorang@yahoo.com?subject=${encodeURIComponent(`Consultation request: ${day}, ${slot}`)}&body=${encodeURIComponent(body)}`;
   };
   return <>
     <header className="site-header">
@@ -64,6 +82,6 @@ function Index() {
     </main>
     <footer><div className="shell flex flex-col justify-between gap-4 sm:flex-row"><p>© {new Date().getFullYear()} Joycelyn Acheampong. All rights reserved.</p><p>Your family. Your future. Your legacy.</p></div><p className="shell mt-4 text-[10px]">Coverage and eligibility are subject to policy terms and insurer approval.</p></footer>
     <Dialog open={activeService !== null} onOpenChange={open => { if (!open) setService(null); }}><DialogContent className="max-w-[calc(100%-32px)] sm:max-w-lg">{activeService && <><activeService.icon className="text-primary" size={30} /><DialogTitle>{activeService.name}</DialogTitle><DialogDescription>{activeService.detail}</DialogDescription><ul className="my-3 space-y-3">{activeService.options.map(option => <li className="flex items-center gap-3 text-sm" key={option}><Check size={16} className="text-primary" />{option}</li>)}</ul><Button variant="gold" onClick={() => startConsultation(activeService.name)}>Discuss my options <ArrowRight /></Button></>}</DialogContent></Dialog>
-    <Dialog open={consultation} onOpenChange={setConsultation}><DialogContent className="max-w-[calc(100%-32px)] sm:max-w-lg"><DialogTitle>Let’s talk about your future.</DialogTitle><DialogDescription>Connect with Joycelyn about the protection that matters to you.</DialogDescription><form className="consultation-form" onSubmit={submit}><label>Your name<Input name="name" placeholder="Full name" required autoComplete="name" /></label><label>Email address<Input name="email" type="email" placeholder="you@example.com" required autoComplete="email" /></label><label>I’m interested in<select className="topic-select" value={topic} onChange={event => setTopic(event.target.value)}>{services.map(item => <option key={item.name}>{item.name}</option>)}<option>Not sure yet</option></select></label><label>What’s on your mind? <Textarea name="message" placeholder="Tell me a little about your goals (optional)" rows={3} /></label><Button variant="gold" type="submit">Continue in email <Mail /></Button><p className="text-center text-xs text-muted-foreground">Opens your email app with your enquiry ready to send.</p></form><div className="flex items-center justify-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground">Prefer a call? <a href="tel:+19738966077" className="text-primary">(973) 896-6077</a></div></DialogContent></Dialog>
+    <Dialog open={consultation} onOpenChange={setConsultation}><DialogContent className="max-h-[90vh] max-w-[calc(100%-32px)] overflow-y-auto sm:max-w-lg"><DialogTitle>Book a consultation.</DialogTitle><DialogDescription>Choose a time that suits you. Joycelyn will confirm your appointment.</DialogDescription><form className="consultation-form" onSubmit={submit}><fieldset className="space-y-2"><legend className="mb-2 text-sm">Choose a day</legend><div className="grid grid-cols-5 gap-2">{days.map(d => <Button key={d.label} type="button" size="sm" variant={day === d.label ? 'gold' : 'outline'} className="h-auto flex-col py-2 text-xs" aria-pressed={day === d.label} onClick={() => setDay(d.label)}><span>{d.weekday}</span><span>{d.date}</span></Button>)}</div></fieldset><fieldset><legend className="mb-2 text-sm">Choose a time (Eastern)</legend><div className="grid grid-cols-3 gap-2">{slots.map(s => <Button key={s} type="button" size="sm" variant={slot === s ? 'gold' : 'outline'} aria-pressed={slot === s} onClick={() => setSlot(s)}>{s}</Button>)}</div>{error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}</fieldset><label>Your name<Input name="name" placeholder="Full name" required maxLength={100} autoComplete="name" /></label><label>Email address<Input name="email" type="email" placeholder="you@example.com" required maxLength={255} autoComplete="email" /></label><label>Phone number<Input name="phone" type="tel" placeholder="(555) 555-5555" required maxLength={30} autoComplete="tel" /></label><label>I’m interested in<select className="topic-select" value={topic} onChange={event => setTopic(event.target.value)}>{services.map(item => <option key={item.name}>{item.name}</option>)}<option>Not sure yet</option></select></label><label>What’s on your mind? <Textarea name="message" placeholder="Tell me a little about your goals (optional)" rows={3} /></label><Button variant="gold" type="submit">Continue in email <Mail /></Button><p className="text-center text-xs text-muted-foreground">Opens your email app with your enquiry ready to send.</p></form><div className="flex items-center justify-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground">Prefer a call? <a href="tel:+19738966077" className="text-primary">(973) 896-6077</a></div></DialogContent></Dialog>
   </>;
 }
