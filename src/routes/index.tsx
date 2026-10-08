@@ -28,18 +28,8 @@ const values = [
   { icon: HandCoins, title: 'Protection that fits.', copy: 'Flexible payment options with your priorities in mind.' },
   { icon: CircleCheck, title: 'A relationship, not a transaction.', copy: 'A simple application process and ongoing support after enrollment.' },
 ];
-const slots = ['10:00 AM', '11:30 AM', '1:00 PM', '2:30 PM', '4:00 PM', '5:30 PM'];
-function upcomingDays() {
-  const out: { label: string; weekday: string; date: string }[] = [];
-  const d = new Date();
-  while (out.length < 10) {
-    d.setDate(d.getDate() + 1);
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-    out.push({ label: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }), weekday: d.toLocaleDateString('en-US', { weekday: 'short' }), date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) });
-  }
-  return out;
-}
 function Index() {
+  const { data: availability } = useSuspenseQuery(availabilityQuery);
   const [consultation, setConsultation] = useState(false);
   const [service, setService] = useState<number | null>(null);
   const [topic, setTopic] = useState('Life Insurance');
@@ -49,15 +39,35 @@ function Index() {
   const [day, setDay] = useState('');
   const [slot, setSlot] = useState('');
   const [error, setError] = useState('');
-  const days = consultation ? upcomingDays() : [];
+  const days = consultation ? upcomingDays(availability) : [];
+  const daySlots = days.find(d => d.label === day)?.slots ?? [];
+  const zone = zoneLabel(availability.timeZone);
+  const [checklist, setChecklist] = useState<string[]>([]);
+  const [prepBusy, setPrepBusy] = useState(false);
+  const [prepError, setPrepError] = useState('');
+  const [prepTopic, setPrepTopic] = useState('Life Insurance');
+  const runChecklist = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const f = new FormData(event.currentTarget);
+    const goals = String(f.get('goals') || '').trim();
+    if (goals.length < 10) { setPrepError('Tell us a little more about your goals.'); return; }
+    setPrepBusy(true); setPrepError(''); setChecklist([]);
+    try {
+      const res = await createChecklist({ data: { goals, coverage: String(f.get('coverage') || ''), topic: prepTopic } });
+      if ('error' in res && res.error) setPrepError(res.error); else if ('items' in res) setChecklist(res.items ?? []);
+    } catch { setPrepError('We couldn’t create your checklist right now. Please try again later.'); }
+    setPrepBusy(false);
+  };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!day || !slot) { setError('Please choose a day and time.'); return; }
     setError('');
     const data = new FormData(event.currentTarget);
     const clean = (k: string, max: number) => String(data.get(k) || '').trim().slice(0, max);
-    const body = `Hello Joycelyn,\n\nI’d like to request a consultation about ${topic}.\n\nPreferred time: ${day} at ${slot} (Eastern Time)\n\nName: ${clean('name', 100)}\nEmail: ${clean('email', 255)}\nPhone: ${clean('phone', 30)}\n\n${clean('message', 1000)}`;
-    window.location.href = `mailto:jaykorang@yahoo.com?subject=${encodeURIComponent(`Consultation request: ${day}, ${slot}`)}&body=${encodeURIComponent(body)}`;
+    const time = `${day} at ${formatTime(slot)} (${zone})`;
+    const prep = checklist.length ? `\n\nMy preparation checklist:\n${checklist.map(i => `- ${i}`).join('\n')}` : '';
+    const body = `Hello Joycelyn,\n\nI’d like to request a consultation about ${topic}.\n\nPreferred time: ${time}\n\nName: ${clean('name', 100)}\nEmail: ${clean('email', 255)}\nPhone: ${clean('phone', 30)}\n\n${clean('message', 1000)}${prep}`;
+    window.location.href = `mailto:jaykorang@yahoo.com?subject=${encodeURIComponent(`Consultation request: ${day}, ${formatTime(slot)}`)}&body=${encodeURIComponent(body)}`;
   };
   return <>
     <header className="site-header">
