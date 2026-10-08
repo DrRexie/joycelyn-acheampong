@@ -13,3 +13,6 @@
 - Keep the advisor website at the index route with anchored service, advisor, and contact sections so visitors can explore the full offering in one page.
 - Use shared UI components and global semantic design tokens for all interaction and styling to keep the brand consistent.
 - Consultation enquiries open a prefilled email to the advisor; never imply an enquiry was sent or an appointment booked without a confirmed sending service.
+- Consultation availability (weekly times + time zone) lives in a single Lovable Cloud row that anyone can read and only admins can edit, so visitors only see times the advisor configured.
+- The first account to sign up becomes admin via a database trigger; roles live in a separate roles table, never on user records, to prevent privilege escalation.
+- AI checklist generation runs only in a server function calling Lovable AI, so the AI key and prompt never reach the browser.
