@@ -9,7 +9,7 @@ export const TIME_ZONES = [
 ];
 
 export function formatTime(hhmm: string) {
-  const [h, m] = hhmm.split(':').map(Number);
+  const [h = 0, m = 0] = hhmm.split(':').map(Number);
   const suffix = h >= 12 ? 'PM' : 'AM';
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${suffix}`;
 }
@@ -30,7 +30,7 @@ export function upcomingDays(a: Availability, count = 10, horizon = 28): Bookabl
     new Intl.DateTimeFormat('en-US', { timeZone: a.timeZone, year: 'numeric', month: 'numeric', day: 'numeric' })
       .formatToParts(new Date()).map(p => [p.type, p.value]),
   );
-  const base = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
+  const base = Date.UTC(Number(parts['year']), Number(parts['month']) - 1, Number(parts['day']));
   const out: BookableDay[] = [];
   for (let i = 1; i <= horizon && out.length < count; i++) {
     const d = new Date(base + i * 86400000);

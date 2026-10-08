@@ -3,8 +3,8 @@ import { queryOptions } from '@tanstack/react-query';
 import type { Availability } from './availability';
 
 export const getAvailability = createServerFn({ method: 'GET' }).handler(async (): Promise<Availability> => {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const url = process.env['SUPABASE_URL'];
+  const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
   if (!url || !key) throw new Error('Availability is not configured');
   const res = await fetch(`${url}/rest/v1/availability_settings?id=eq.1&select=time_zone,weekly`, { headers: { apikey: key } });
   if (!res.ok) throw new Error('Could not load availability');
